@@ -1,0 +1,64 @@
+{
+  "pikachu": {
+    "id": "pikachu",
+    "name": "Pikachu",
+    "baseStats": {
+      "hp": 35,
+      "attack": 55,
+      "defense": 40,
+      "specialAttack": 50,
+      "specialDefense": 50,
+      "speed": 90
+    },
+    "abilities": ["Static"],
+    "attacks": ["tackle", "row"]
+  },
+  "charmander": {
+    "id": "charmander",
+    "name": "Charmander",
+    "baseStats": {
+      "hp": 39,
+      "attack": 52,
+      "defense": 43,
+      "specialAttack": 60,
+      "specialDefense": 50,
+      "speed": 65
+    },
+    "abilities": ["Blaze"],
+    "attacks": ["tackle", "row"]
+  },
+  "attacks": {
+    "tackle": {
+      "id": "tackle",
+      "name": "Tackle",
+      "power": 40,
+      "type": "Normal"
+    },
+    "row": {
+      "id": "row",
+      "name": "Row",
+      "power": 30,
+      "type": "Normal"
+    }
+  },
+  "natures": [
+    {
+      "id": "adamant",
+      "name": "Adamant",
+      "increase": "attack",
+      "decrease": "specialAttack"
+    },
+    {
+      "id": "modest",
+      "name": "Modest",
+      "increase": "specialAttack",
+      "decrease": "attack"
+    },
+    {
+      "id": "jolly",
+      "name": "Jolly",
+      "increase": "speed",
+      "decrease": "specialAttack"
+    }
+  ]
+}

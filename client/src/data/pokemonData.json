@@ -1,0 +1,10 @@
+{
+  "Pikachu": {
+    "abilities": ["Static", "Lightning Rod"],
+    "moves": ["Tackle", "Growl"]
+  },
+  "Charmander": {
+    "abilities": ["Blaze", "Solar Power"],
+    "moves": ["Tackle", "Growl"]
+  }
+}
