@@ -1,0 +1,14 @@
+[
+  {
+    "id": "leftovers",
+    "name": "Leftovers",
+    "description": "Recupera um pouco de HP no final de cada turno.",
+    "effect": "recover_hp"
+  },
+  {
+    "id": "choice_scarf",
+    "name": "Choice Scarf",
+    "description": "Aumenta a velocidade, mas bloqueia o primeiro movimento escolhido.",
+    "effect": "speed_boost_lock_move"
+  }
+]

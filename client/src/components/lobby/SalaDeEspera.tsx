@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { socket } from "../../services/socket";
 import pokemonData from "../../data/pokemonData.json";
+import heldItems from "../../data/heldItemsData.json";
 
 const defaultStats = ["hp", "atk", "def", "spa", "spd", "spe"];
 const maxEVTotal = 510;
@@ -12,6 +13,7 @@ type PokemonBuild = {
   name: string;
   ability: string;
   nature: string;
+  item: string;
   ivs: Record<Stat, number>;
   evs: Record<Stat, number>;
   moves: string[];
@@ -99,6 +101,7 @@ function SalaDeEspera() {
       name: species,
       ability: data.abilities[0],
       nature: "Hardy",
+      item: "",
       ivs: Object.fromEntries(defaultStats.map(stat => [stat, 31])) as Record<Stat, number>,
       evs: Object.fromEntries(defaultStats.map(stat => [stat, 0])) as Record<Stat, number>,
       moves: data.moves.slice(0, 2)
@@ -131,6 +134,16 @@ function SalaDeEspera() {
                   <select value={poke.ability} onChange={e => handleTeamChange(i, "ability", e.target.value)}>
                     {pokemonData[poke.name].abilities.map((ab, abIndex) => (
                       <option key={abIndex} value={ab}>{ab}</option>
+                    ))}
+                  </select>
+                </label>
+                <br />
+                <label>
+                  Item:
+                  <select value={poke.item} onChange={e => handleTeamChange(i, "item", e.target.value)}>
+                    <option value="">-- Nenhum --</option>
+                    {heldItems.map((item, idx) => (
+                      <option key={idx} value={item.id}>{item.name}</option>
                     ))}
                   </select>
                 </label>
