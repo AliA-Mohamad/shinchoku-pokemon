@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { socket } from "../../services/socket";
+import { battleSocket, socket } from "../../services/socket";
 import pokemonData from "../../data/pokemonData.json";
 import heldItems from "../../data/heldItemsData.json";
 
@@ -26,16 +26,27 @@ function SalaDeEspera() {
   const roomId = state?.roomId;
 
   const [isOwner, setIsOwner] = useState(false);
+  const [challengerName, setChallengerName] = useState("");
   const [team, setTeam] = useState([
     createEmptyPokemon("Pikachu"),
     createEmptyPokemon("Charmander")
   ]);
 
   useEffect(() => {
-    socket.on("start-battle", ({ roomId, myId, battleState }) => {
+    if (!myId || !roomId) {
+      navigate("/");
+      return;
+    }
+    battleSocket.emit('join-battle-room', { roomId });
+
+    battleSocket.on("start-battle", ({ roomId, myId, battleState }) => {
       navigate("/battle", {
         state: { roomId, myId, battleState },
       });
+    });
+
+    socket.on("challenger-joined", ({ challengerName }) => {
+        setChallengerName(challengerName);
     });
 
     socket.on("room-info", (room) => {
@@ -48,14 +59,11 @@ function SalaDeEspera() {
 
     socket.emit("get-room-info", roomId);
 
-    socket.emit("challenger-selected-team", {
-      roomId,
-      team,
-    });
-
     return () => {
-      socket.off("start-battle");
+      battleSocket.emit('leave-battle-room', { roomId });
+      battleSocket.off("start-battle");
       socket.off("room-info");
+      socket.off("challenger-joined");
     };
   }, [navigate, roomId, myId]);
 
@@ -88,7 +96,7 @@ function SalaDeEspera() {
   }
 
   function handleConfirm() {
-    socket.emit("submit-build", {
+    battleSocket.emit("submit-build", {
       roomId,
       playerId: myId,
       team
@@ -109,75 +117,141 @@ function SalaDeEspera() {
   }
 
   return (
-      <div style={{ padding: 20 }}>
-        {isOwner ? (
-          <p>Aguardando o desafiante montar seu time...</p>
+  <div style={{ padding: 20, fontFamily: "sans-serif" }}>
+    {isOwner ? (
+      <div>
+        <h2>Sala de Espera do Boss</h2>
+        <p>
+          Compartilhe este código com seu oponente:{" "}
+          <strong style={{ fontSize: "1.2em", color: "#007bff" }}>
+            {roomId}
+          </strong>
+        </p>
+        {challengerName ? (
+          <p style={{ color: "green", marginTop: "20px" }}>
+            O desafiante <strong>{challengerName}</strong> entrou! Aguardando
+            ele montar o time...
+          </p>
         ) : (
-          <>
-            <h2>Monte seu time</h2>
-            {team.map((poke, i) => (
-              <div key={i} style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
-                <h3>{poke.name}</h3>
-                <label>
-                  Nature:
-                  <select value={poke.nature} onChange={e => handleTeamChange(i, "nature", e.target.value)}>
-                    <option value="Hardy">Hardy</option>
-                    <option value="Timid">Timid</option>
-                    <option value="Adamant">Adamant</option>
-                    <option value="Modest">Modest</option>
-                    {/* adicionar mais depois */}
-                  </select>
-                </label>
+          <p style={{ marginTop: "20px" }}>
+            Aguardando um desafiante entrar na sala...
+          </p>
+        )}
+      </div>
+    ) : (
+      <>
+        <h2>Monte seu time, Desafiante!</h2>
+        {team.map((poke, i) => (
+          <div
+            key={i}
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              padding: "15px",
+              marginBottom: "15px",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h3>
+              Pokémon {i + 1}: {poke.name}
+            </h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "15px" }}>
+              <label>
+                Nature:
                 <br />
-                <label>
-                  Ability:
-                  <select value={poke.ability} onChange={e => handleTeamChange(i, "ability", e.target.value)}>
-                    {pokemonData[poke.name].abilities.map((ab, abIndex) => (
-                      <option key={abIndex} value={ab}>{ab}</option>
-                    ))}
-                  </select>
-                </label>
+                <select value={poke.nature} onChange={(e) => handleTeamChange(i, "nature", e.target.value)} style={{ width: "100%", padding: "5px" }}>
+                  <option value="Hardy">Hardy</option>
+                  <option value="Timid">Timid</option>
+                  <option value="Adamant">Adamant</option>
+                  <option value="Modest">Modest</option>
+                  {/* adicionar mais depois */}
+                </select>
+              </label>
+              <label>
+                Ability:
                 <br />
-                <label>
-                  Item:
-                  <select value={poke.item} onChange={e => handleTeamChange(i, "item", e.target.value)}>
-                    <option value="">-- Nenhum --</option>
-                    {heldItems.map((item, idx) => (
-                      <option key={idx} value={item.id}>{item.name}</option>
+                <select value={poke.ability} onChange={(e) => handleTeamChange(i, "ability", e.target.value)} style={{ width: "100%", padding: "5px" }}>
+                  {pokemonData[poke.name].abilities.map((ab, abIndex) => (
+                    <option key={abIndex} value={ab}>
+                      {ab}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Item:
+                <br />
+                <select value={poke.item} onChange={(e) => handleTeamChange(i, "item", e.target.value)} style={{ width: "100%", padding: "5px" }}>
+                  <option value="">-- Nenhum --</option>
+                  {heldItems.map((item, idx) => (
+                    <option key={idx} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            
+            <div style={{ display: "flex", justifyContent: "space-around", marginTop: "15px" }}>
+                <div>
+                    <h4>IVs</h4>
+                    {defaultStats.map((stat) => (
+                    <div key={stat} style={{ marginBottom: "5px" }}>
+                        {stat.toUpperCase()}:{" "}
+                        <input type="number" value={poke.ivs[stat]} onChange={(e) => handleIVChange(i, stat, e.target.value)} style={{ width: "60px" }}/>
+                    </div>
                     ))}
-                  </select>
-                </label>
-                <h4>IVs</h4>
-                {defaultStats.map(stat => (
-                  <div key={stat}>
-                    {stat.toUpperCase()}: <input type="number" value={poke.ivs[stat]} onChange={e => handleIVChange(i, stat, e.target.value)} />
-                  </div>
-                ))}
-                <h4>EVs</h4>
-                {defaultStats.map(stat => (
-                  <div key={stat}>
-                    {stat.toUpperCase()}: <input type="number" value={poke.evs[stat]} onChange={e => handleEVChange(i, stat, e.target.value)} />
-                  </div>
-                ))}
-                <h4>Moves</h4>
-                {[0, 1, 2, 3].map(moveIdx => (
-                  <select
+                </div>
+                <div>
+                    <h4>EVs (Total: {Object.values(poke.evs).reduce((a, b) => a + b, 0)} / {maxEVTotal})</h4>
+                    {defaultStats.map((stat) => (
+                    <div key={stat} style={{ marginBottom: "5px" }}>
+                        {stat.toUpperCase()}:{" "}
+                        <input type="number" value={poke.evs[stat]} onChange={(e) => handleEVChange(i, stat, e.target.value)} style={{ width: "60px" }}/>
+                    </div>
+                    ))}
+                </div>
+            </div>
+
+            <h4 style={{ marginTop: "15px" }}>Moves</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}>
+                {[0, 1, 2, 3].map((moveIdx) => (
+                <select
                     key={moveIdx}
                     value={poke.moves[moveIdx] || ""}
-                    onChange={e => handleMoveChange(i, moveIdx, e.target.value)}>
+                    onChange={(e) => handleMoveChange(i, moveIdx, e.target.value)}
+                    style={{ padding: "5px" }}
+                >
                     <option value="">---</option>
                     {pokemonData[poke.name].moves.map((mv, mvi) => (
-                      <option key={mvi} value={mv}>{mv}</option>
+                    <option key={mvi} value={mv}>
+                        {mv}
+                    </option>
                     ))}
-                  </select>
+                </select>
                 ))}
-              </div>
-            ))}
-            <button onClick={handleConfirm}>Confirmar equipe</button>
-          </>
-        )}
-    </div>
-  );
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={handleConfirm}
+          style={{
+            width: "100%",
+            padding: "15px",
+            fontSize: "1.2em",
+            cursor: "pointer",
+            backgroundColor: "#28a745",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+          }}
+        >
+          Confirmar Equipe e Iniciar Batalha
+        </button>
+      </>
+    )}
+  </div>
+);
 
 }
 

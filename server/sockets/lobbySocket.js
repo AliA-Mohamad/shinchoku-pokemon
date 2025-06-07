@@ -1,9 +1,19 @@
 const { v4: uuidv4 } = require("uuid");
 
-function setupLobbySockets(io) {
-  const connectedPlayers = {};
-  const rooms = {};
+const bossBuild = [
+  {
+    name: "Mewtwo",
+    ability: "Pressure",
+    nature: "Timid",
+    item: "lifeorb",
+    ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
+    evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },
+    moves: ["Psyshock", "Aura Sphere", "Shadow Ball", "Recover"],
+  },
+  // Adicione mais 5 Pokémons para o Boss se desejar
+];
 
+function setupLobbySockets(io, rooms, connectedPlayers) {
   io.on("connection", (socket) => {
     console.log("Novo jogador conectado:", socket.id);
 
@@ -28,6 +38,8 @@ function setupLobbySockets(io) {
         ownerName: connectedPlayers[socket.id].name,
         players: [socket.id],
         status: "waiting",
+        bossBuild: bossBuild,
+        challengerBuild: null,
       };
 
       socket.join(roomId);
@@ -48,9 +60,13 @@ function setupLobbySockets(io) {
       }
 
       room.players.push(playerId);
+      room.challengerId = playerId;
       socket.join(roomId);
 
       io.emit("rooms-update", Object.entries(rooms).map(([id, r]) => ({ roomId: id, ...r })));
+      io.to(room.ownerId).emit("challenger-joined", {
+        challengerName: connectedPlayers[playerId]?.name || "Desafiante",
+      });
     });
 
     socket.on("disconnect", () => {

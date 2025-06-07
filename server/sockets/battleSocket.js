@@ -1,38 +1,62 @@
-function setupBattleSockets(io) {
-  const battleData = {};
-
+function setupBattleSockets(io, rooms) {
   io.on("connection", (socket) => {
+    socket.on('join-battle-room', ({ roomId }) => {
+        console.log(`Socket ${socket.id} entrando na sala de batalha: ${roomId}`);
+        socket.join(roomId);
+    });
+
+    socket.on('leave-battle-room', ({ roomId }) => {
+        console.log(`Socket ${socket.id} saindo da sala de batalha: ${roomId}`);
+        socket.leave(roomId);
+    });
+
     socket.on("submit-build", ({ roomId, playerId, team }) => {
-      if (!battleData[roomId]) {
-        battleData[roomId] = { players: {} };
+      const room = rooms[roomId];
+      if (!room) {
+        console.error(`Erro: Sala ${roomId} não encontrada ao submeter build.`);
+        return;
       }
 
-      battleData[roomId].players[playerId] = { team };
-
-      const playerIds = Object.keys(battleData[roomId].players);
-
-      if (playerIds.length === 2) {
-        const [p1, p2] = playerIds;
+      if (room.challengerId === playerId) {
+        room.challengerBuild = team;
+        room.status = "in-battle";
+        
+        console.log(`Build do desafiante recebida para a sala ${roomId}. Iniciando batalha.`);
         const battleState = {
-          [p1]: battleData[roomId].players[p1].team,
-          [p2]: battleData[roomId].players[p2].team,
+          players: [room.ownerId, room.challengerId],
+          turn: 0,
+          estados: {
+            [room.ownerId]: {
+              team: room.bossBuild,
+              activePokemonIndex: 0,
+            },
+            [room.challengerId]: {
+              team: room.challengerBuild,
+              activePokemonIndex: 0,
+            }
+          },
+          log: ["A batalha começou!"]
         };
 
-        io.to(roomId).emit("start-battle", {
+        room.battleState = battleState;
+
+        io.to(room.ownerId).emit("start-battle", {
           roomId,
-          myId: p1,
+          myId: room.ownerId,
           battleState,
         });
 
-        io.to(roomId).emit("start-battle", {
+        io.to(room.challengerId).emit("start-battle", {
           roomId,
-          myId: p2,
+          myId: room.challengerId,
           battleState,
         });
       }
     });
 
     socket.on("battle-action", ({ roomId, action }) => {
+      const room = rooms[roomId];
+      if (!room || !room.battleState) return;
       io.to(roomId).emit("battle-action", action);
     });
   });

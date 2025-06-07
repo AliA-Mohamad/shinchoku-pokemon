@@ -26,9 +26,13 @@ export default function LobbyGlobal() {
 
 
   useEffect(() => {
+    const handleRoomCreated = ({ roomId }) => {
+      setRoomIdCreated(roomId);
+      navigate("/sala", { state: { myId: socket.id, roomId } });
+    };
     socket.on("players-update", (data: Player[]) => setPlayers(data));
     socket.on("rooms-update", (data: Room[]) => setRooms(data));
-    socket.on("room-created", ({ roomId }) => setRoomIdCreated(roomId));
+    socket.on("room-created", handleRoomCreated);
     socket.on("room-error", (msg: string) => {
       setError(msg);
       setTimeout(() => setError(null), 3000);
@@ -40,7 +44,7 @@ export default function LobbyGlobal() {
     return () => {
       socket.off("players-update");
       socket.off("rooms-update");
-      socket.off("room-created");
+      socket.off("room-created", handleRoomCreated);
       socket.off("room-error");
       socket.off("start-battle");
     };
